@@ -26,7 +26,7 @@ class Depot(accurev.base.Base):
     @property
     def schema(self):
         if self._schema is None:
-            self._schema = self.client.depot_schema(self._Name)
+            self._schema = self.client.schema(self._Name)
         return self._schema
 
     @property

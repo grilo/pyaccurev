@@ -99,7 +99,7 @@ class Client:
         cmd = 'getconfig -p {depot} -r {config_name}'.format(depot=depot, config_name=config_name)
         return self.cmd(cmd)
 
-    def depot_schema(self, depot):
+    def schema(self, depot):
         out, err = self.getconfig(depot, 'schema.xml')
         return accurev.schema.Schema.from_xml(self, out)
 
