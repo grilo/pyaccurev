@@ -4,23 +4,47 @@
 import logging
 import xml.etree.cElementTree as et
 
+import accurev.utils
 import accurev.base
+import accurev.element
 
 
 class Issue(accurev.base.Base):
 
+    @staticmethod
+    def from_xml(client, out):
+        issues = []
+        for i in et.fromstring(out).findall("./issues/issue"):
+            props = {}
+            for child in i:
+                props[child.tag] = child.text
+            yield Issue(client, **props)
+
+
     def __init__(self, client, **kwargs):
+        self._stream = None
+        self._lookupField = None
         super(Issue, self).__init__(client, **kwargs)
         self._elements = {}
+        self._dependencies = {}
 
     def __setattr__(self, name, value):
+        """
+            Implement pythonic issue modification. This enables the following
+            syntax: 
+
+            depot.streams['stream_name'].issues['47'].shortDescription = 'something_else'
+        """
         super(Issue, self).__setattr__(name, value)
-        schema = self._get_db_schema()
+
+        if not 'client' in self.__dict__.keys() or not 'depotName' in self.__dict__.keys():
+            return
+
+        schema = self.client.depot_schema(self.depotName)
         if not name in schema.keys():
             return
 
         props = {}
-
         for k, v in schema.items():
             if k == 'transNum':
                 continue
@@ -35,130 +59,32 @@ class Issue(accurev.base.Base):
                     'value': self.__dict__['_' + k],
                 }
 
-        rc, out, err = self.client.modify_issue(props)
-        if rc != 0:
-            raise Exception(err)
+        return self.client.modify_issue(props, self.depotName)
 
-#    my $meta = @{get_issue_meta(\@issue)}[0];
-#    my $schema = utils::get_db_schema();
-#
-#    my $query = "<modifyIssue issueDB=\"ING\">\n";
-#    $query .= "\t<issue>\n";
-#
-#    foreach my $k (keys %{$schema}) {
-#        $k eq "transNum" and next;
-#        if ($k eq $key) {
-#            $query .= "\t\t<$k fid=\"$schema->{$k}\">$value</$k>\n";
-#        } elsif (exists ($meta->{$k})) {
-#            $query .= "\t\t<$k fid=\"$schema->{$k}\">$meta->{$k}[0]->{'content'}</$k>\n";
-#        }
-#        # Else, adding fields with empty values to the CR just means they'll be ignored
-#    }
-#
-#    $query .= "\t</issue>\n";
-#    $query .= "</modifyIssue>\n";
-#
-#    my $response = utils::xml_query($query);
-#    if ($?) {
-#        die("Error modifying CR: $query\n");
-#    }
-#
-        
+    @property
+    def lookupField(self):
+        return self.__dict__[self.client.depot_schema(self.depotName).lookupId]
 
-    def _get_db_schema(self):
-        """
-            AccuRev actually supports multiple templates for the issues, alas
-            there's no support for it in the implementation below.
-        """
-        rc, out, err = self.client.cmd('getconfig -p ING -r schema.xml')
-        schema = {}
-        for field in et.fromstring(out).findall('./field'):
-            schema[field.attrib['name']] = field.attrib
-        return schema            
+    @property
+    def stream(self):
+        return accurev.stream.Stream.from_name(self.client, self.depotName, self._stream)
 
-#<?xml version="1.0" encoding="UTF-8"?>
-#<template name="default">
-#<lookupField fid="34"/>
-#<field
-#name="issueNum"
-#type="internal"
-#label="Issue"
-#reportWidth="10"
-#fid="1">
-#</field>
-#<field
-#name="transNum"
-#type="internal"
-#label="Transaction"
-#reportWidth="10"
-#fid="2">
-#</field>
+    @property
+    def dependencies(self):
+        if len(self._dependencies) == 0:
+            for issue in self.client.cpkdepend([self.issueNum], self.depotName, self.stream.name, self.stream.basis.name):
+                issue._depotName = self.depotName
+                self._dependencies[issue.lookupField] = issue
+        return self._dependencies
 
-#sub get_db_schema {
-#    my $schema;
-#    my $response = `accurev getconfig -p ING -r schema.xml`;
-#    $response = XML::Simple::XMLin($response, ForceArray => 1, KeyAttr => '');
-#    foreach my $field (@{$response->{'field'}}) {
-#        $schema->{$field->{'name'}} = $field->{'fid'};
-#    }
-#    return $schema;
-#}
-
-#    my $meta = @{get_issue_meta(\@issue)}[0];
-#    my $schema = utils::get_db_schema();
-#
-#    my $query = "<modifyIssue issueDB=\"ING\">\n";
-#    $query .= "\t<issue>\n";
-#
-#    foreach my $k (keys %{$schema}) {
-#        $k eq "transNum" and next;
-#        if ($k eq $key) {
-#            $query .= "\t\t<$k fid=\"$schema->{$k}\">$value</$k>\n";
-#        } elsif (exists ($meta->{$k})) {
-#            $query .= "\t\t<$k fid=\"$schema->{$k}\">$meta->{$k}[0]->{'content'}</$k>\n";
-#        }
-#        # Else, adding fields with empty values to the CR just means they'll be ignored
-#    }
-#
-#    $query .= "\t</issue>\n";
-#    $query .= "</modifyIssue>\n";
-#
-#    my $response = utils::xml_query($query);
-#    if ($?) {
-#        die("Error modifying CR: $query\n");
-#    }
-#
-
-
-#def get_issue_elements(issues, stream=None):
-#    logging.debug("Get issue elements: %s :: %s", str(issues), stream)
-#    elements = {}
-#    for i in issues:
-#        elements[i] = []
-#
-#    if len(elements.keys()) == 0:
-#        return elements
-#
-#    query = "<AcRequest><cpkdescribe><depot>ING</depot>"
-#    if stream:
-#        query += "<stream1>%s</stream1>" % (stream)
-#    query += "<issues>"
-#    for i in issues:
-#        query += "<issueNum>%s</issueNum>" % (str(i))
-#    query += "</issues></cpkdescribe></AcRequest>"
-#
-#    root = et.fromstring(xml_cmd(query))
-#    for node in root.findall('./issues/issue'):
-#        issueNum = node.find('issueNum').text
-#        elements[issueNum] = []
-#        for e in node.find('./elements'):
-#            e = e.attrib
-#            e['eid'] = e['id']
-#            e['version'] = e['real_version']
-#            if not 'missing' in e.keys():
-#                e['missing'] = 'false'
-#            if not 'overlap' in e.keys():
-#                e['overlap'] = 'false'
-#            elements[issueNum].append(e)
-#    return elements
-#
+    @property
+    def elements(self):
+        if len(self._elements.keys()) == 0:
+            rc, out, err = self.client.cpkdescribe([self.issueNum], self.depotName, self._stream)
+            for element in et.fromstring(out).findall('./issues/issue/elements/element'):
+                if element.attrib['missing'] == 'true':
+                    continue
+                element.attrib['issue'] = self.issueNum
+                e = accurev.element.Element(self.client, **element.attrib)
+                self._elements[e.eid] = e
+        return self._elements

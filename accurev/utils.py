@@ -34,4 +34,10 @@ def cmd(command, directory=None):
     if directory:
         os.chdir(old_dir)
 
-    return rc, out, err
+    if rc != 0:
+        logging.critical('Command return code: %i', rc)
+        logging.critical('STDOUT: %s', out)
+        logging.critical('STDERR: %s', err)
+        raise OSError(rc)
+
+    return out, err

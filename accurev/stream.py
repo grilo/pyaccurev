@@ -12,6 +12,12 @@ import accurev.issue
 
 class ReferenceTree(accurev.base.Base):
 
+    @staticmethod
+    def from_xml(client, out):
+        for reftree in et.fromstring(out).findall('./Element'):
+            yield accurev.stream.ReferenceTree(client, **reftree.attrib)
+
+
     def __init__(self, client, **kwargs):
         super(Stream, self).__init__(client, **kwargs)
         for k, v in self.__dict__.items():
@@ -22,20 +28,56 @@ class ReferenceTree(accurev.base.Base):
 
 class Stream(accurev.base.Base):
 
+    @staticmethod
+    def from_xml(client, out):
+        for stream in et.fromstring(out).findall("./stream"):
+            yield Stream(client, **stream.attrib)
+
+
     def __init__(self, client, **kwargs):
+        self._basis = None
+        self._basis_stream = None
         super(Stream, self).__init__(client, **kwargs)
+        self._default_group = {}
         self._elements = {}
         self._issues = {}
         self._children = {}
         self._refs = {}
+        self._family = []
+
+    @property
+    def basis(self):
+        """
+            Return this stream's parent <stream object>
+        """
+        if self._basis is None:
+            return None
+        elif self._basis_stream is None:
+            self._basis_stream = list(self.client.stream_show(self._basis))[0]
+        return self._basis_stream
+
+    @property
+    def default_group(self):
+        """
+            Return a map { eid : <element object> } of all elements in the
+            default group (member) in this stream.
+        """
+        if len(self._default_group) == 0:
+            for element in self.client.stream_stat(self.name, default_group=True):
+                element._stream = self.name
+                self._default_group[element.eid] = element
+        return self._default_group
 
     @property
     def elements(self):
+        """
+            Return a map { eid : <element object> } of all elements that exist
+            in this stream.
+        """
         if len(self._elements) == 0:
-            rc, out, err = self.client.cmd('stat -fexv -a -s %s' % (self._name))
-            for element in et.fromstring(out).findall('./element'):
-                e = accurev.element.Element(self.client, **element.attrib)
-                self._elements[e.eid] = e
+            for element in self.client.stream_stat(self.name, default_group=True):
+                element._stream = self.name
+                self._elements[element.eid] = element
         return self._elements
 
     @property
@@ -44,49 +86,47 @@ class Stream(accurev.base.Base):
 
     @property
     def refs(self):
+        """
+            Return a map { name : <stream obj> } of all the reference trees
+            associated with this stream.
+        """
         if len(self._refs.keys()) == 0:
-            rc, out, err = self.client.cmd('show -fexv refs')
-            for element in et.fromstring(out).findall('./Element'):
-                obj = accurev.stream.ReferenceTree(self.client, **element.attrib)
-                self._refs[obj.name] = obj
+            for ref in self.client.refs_show():
+                if ref.Stream != self.name:
+                    continue
+                self._refs[ref.name] = ref
         return self._refs
 
     @property
     def children(self):
+        """
+            Return a map { name : <stream obj> } of all the immediate children
+            without including reference trees.
+        """
         if len(self._children.keys()) == 0:
-            rc, out, err = self.client.cmd('show -fexv -1 -s %s streams' % (self._name))
-            for element in et.fromstring(out).findall('./stream'):
-                if element.attrib['name'] == self._name:
+            for stream in accurev.client.stream_children(self.depotName, self.name):
+                if stream.name == self.name:
                     continue
-                obj = accurev.stream.Stream(self.client, **element.attrib)
-                self._children[obj.name] = obj
+                self._children[stream.name] = stream
         return self._children
+
+    @property
+    def family(self):
+        """
+            Return a list (grandparent -> parent -> children) of <stream obj>,
+            representing this stream's ancestry and all of its children. Doesn't
+            include reference trees, but includes itself.
+        """
+        if len(self._family) == 0:
+            for stream in accurev.client.stream_family(self.depotName, self.name):
+                self._family.append(stream)
+        return self._family
 
     @property
     def issues(self):
         if len(self._issues.keys()) == 0:
-
-            """
-                Need to retrieve both complete and incomplete issues. Incomplete
-                issues are the ones which have elements in more than one stream.
-            """
-
-            rc, out, err = self.client.cmd('issuelist -fx -s %s' % (self._name))
-            for issue in et.fromstring(out).findall('./issues/issue'):
-                props = {}
-                for child in issue:
-                    props[child.tag] = child.text
-                props['stream'] = self._name
-                obj = accurev.issue.Issue(self.client, **props)
-                self._issues[obj.issueNum] = obj
-
-            rc, out, err = self.client.cmd('issuelist -fx -i -s %s' % (self._name))
-            for issue in et.fromstring(out).findall('./issues/issue'):
-                props = {}
-                for child in issue:
-                    props[child.tag] = child.text
-                props['stream'] = self._name
-                obj = accurev.issue.Issue(self.client, **props)
-                self._issues[obj.issueNum] = obj
-            
+            for issue in self.client.stream_issues(self.depotName, self.name):
+                issue._stream = self.name
+                issue._depotName = self.depotName
+                self._issues[issue.lookupField] = issue
         return self._issues
