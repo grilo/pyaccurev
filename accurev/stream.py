@@ -19,11 +19,7 @@ class ReferenceTree(accurev.base.Base):
 
 
     def __init__(self, client, **kwargs):
-        super(Stream, self).__init__(client, **kwargs)
-        for k, v in self.__dict__.items():
-            if k == 'Loc':
-                k = 'location'
-            self.__dict__[k.lower()] = v
+        super(ReferenceTree, self).__init__(client, **kwargs)
 
 
 class Stream(accurev.base.Base):
@@ -43,6 +39,7 @@ class Stream(accurev.base.Base):
         self._issues = {}
         self._children = {}
         self._refs = {}
+        self._workspaces = {}
         self._family = []
 
     @property
@@ -81,34 +78,25 @@ class Stream(accurev.base.Base):
         return self._elements
 
     @property
-    def workspaces(self):
-        return [v for v in self.children.values() if v.type == 'workspace']
-
-    @property
-    def refs(self):
-        """
-            Return a map { name : <stream obj> } of all the reference trees
-            associated with this stream.
-        """
-        if len(self._refs.keys()) == 0:
-            for ref in self.client.refs_show():
-                if ref.Stream != self.name:
-                    continue
-                self._refs[ref.name] = ref
-        return self._refs
-
-    @property
     def children(self):
         """
             Return a map { name : <stream obj> } of all the immediate children
             without including reference trees.
         """
         if len(self._children.keys()) == 0:
-            for stream in accurev.client.stream_children(self.depotName, self.name):
+            for stream in self.client.stream_children(self.depotName, self.name):
                 if stream.name == self.name:
                     continue
                 self._children[stream.name] = stream
         return self._children
+
+    @property
+    def workspaces(self):
+        if len(self._workspaces.keys()) == 0:
+            for name, stream in self.children.items():
+                if stream.type == 'workspace':
+                    self._workspaces[name] = stream
+        return self._workspaces
 
     @property
     def family(self):
@@ -118,7 +106,7 @@ class Stream(accurev.base.Base):
             include reference trees, but includes itself.
         """
         if len(self._family) == 0:
-            for stream in accurev.client.stream_family(self.depotName, self.name):
+            for stream in self.client.stream_family(self.depotName, self.name):
                 self._family.append(stream)
         return self._family
 
@@ -130,3 +118,16 @@ class Stream(accurev.base.Base):
                 issue._depotName = self.depotName
                 self._issues[issue.lookupField] = issue
         return self._issues
+
+    @property
+    def refs(self):
+        """
+            Return a map { name : <stream obj> } of all the reference trees
+            associated with this stream.
+        """
+        if len(self._refs.keys()) == 0:
+            for ref in self.client.refs_show():
+                if ref.Stream != self.streamNumber:
+                    continue
+                self._refs[ref.Name] = ref
+        return self._refs

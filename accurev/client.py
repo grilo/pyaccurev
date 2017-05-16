@@ -93,7 +93,9 @@ class Client:
         query += '\t\t</issues>\n'
         query += '\t</cpkdescribe>\n'
         query += '</AcRequest>'
-        return self.xml_cmd(query)
+
+        out, err = self.xml_cmd(query)
+        return accurev.element.Element.from_cpkdescribe(out)
 
     def getconfig(self, config_name, depot):
         cmd = 'getconfig -p {depot} -r {config_name}'.format(depot=depot, config_name=config_name)
@@ -192,7 +194,7 @@ class Client:
         else:
             cmd += ' -a'
         out, err = self.cmd('stat -fexv -d -s %s' % (self.name))
-        for element in accurev.element.Element.from_xml(self, out):
+        for element in accurev.element.Element.from_stat(self, out):
             yield element
 
     def refs_show(self):

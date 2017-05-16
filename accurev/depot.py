@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import logging
+import xml.etree.ElementTree as xet
 import xml.etree.cElementTree as et
 
 import accurev.base
@@ -22,6 +23,8 @@ class Depot(accurev.base.Base):
         self._issues = {}
         self._streams = {}
         self._schema = None
+        for k, v in self.__dict__.items():
+            self.__dict__[k.lower()] = v
 
     @property
     def schema(self):

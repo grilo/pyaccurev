@@ -31,7 +31,7 @@ class Issue(accurev.base.Base):
     def __setattr__(self, name, value):
         """
             Implement pythonic issue modification. This enables the following
-            syntax: 
+            syntax:
 
             depot.streams['stream_name'].issues['47'].shortDescription = 'something_else'
         """
@@ -40,7 +40,7 @@ class Issue(accurev.base.Base):
         if not 'client' in self.__dict__.keys() or not 'depotName' in self.__dict__.keys():
             return
 
-        schema = self.client.depot_schema(self.depotName)
+        schema = self.client.schema(self.depotName)
         if not name in schema.keys():
             return
 
@@ -63,7 +63,8 @@ class Issue(accurev.base.Base):
 
     @property
     def lookupField(self):
-        return self.__dict__[self.client.depot_schema(self.depotName).lookupId]
+        attr = self.client.schema(self.depotName).lookupField
+        return getattr(self, attr)
 
     @property
     def stream(self):
@@ -80,11 +81,17 @@ class Issue(accurev.base.Base):
     @property
     def elements(self):
         if len(self._elements.keys()) == 0:
-            rc, out, err = self.client.cpkdescribe([self.issueNum], self.depotName, self._stream)
-            for element in et.fromstring(out).findall('./issues/issue/elements/element'):
+            for element in self.client.cpkdescribe([self.issueNum], self.depotName, self._stream):
                 if element.attrib['missing'] == 'true':
                     continue
                 element.attrib['issue'] = self.issueNum
                 e = accurev.element.Element(self.client, **element.attrib)
                 self._elements[e.eid] = e
         return self._elements
+
+    """
+    XXX Not implemented
+    @property
+    def cpkhist(self):
+        pass
+    """

@@ -3,6 +3,10 @@
 
 import unittest
 
+import mock
+
+import accurev.schema
+
 import accurev.mock
 import accurev.client
 
