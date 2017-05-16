@@ -15,7 +15,10 @@ class Schema(accurev.base.Base):
         }
 
         # Get the lookup field ID
-        lookupField = et.fromstring(out).findall('./lookupField')[0].attrib['fid']
+        lookupField = None
+        xml_element = et.fromstring(out).findall('./lookupField')
+        if xml_element:
+            lookupField = xml_element[0].attrib['fid']
 
         for field in et.fromstring(out).findall('./field'):
             if field.attrib['fid'] == lookupField:
@@ -36,7 +39,10 @@ class Schema(accurev.base.Base):
         return self.keys()
 
     def values(self):
-        return [v for k, v in self.__dict__.items() if k != 'client']
+        for k, v in self.__dict__.items():
+            if k != 'client' and k != '_lookupField':
+                yield v
+        #return [v for k, v in self.__dict__.items() if k != 'client']
 
     def keys(self):
         return [k for k in self.__dict__.keys() if k != 'client']
