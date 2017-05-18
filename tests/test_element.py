@@ -3,7 +3,10 @@
 
 import unittest
 
+import mock
+
 import accurev.element
+import accurev.transaction
 
 
 class TestAccuRevElement(unittest.TestCase):
@@ -99,3 +102,9 @@ class TestAccuRevElement(unittest.TestCase):
     def test_element_normalizes_forwardslash_path(self):
 	element = accurev.element.Element(None, location='/some/element/path')
         self.assertEqual(element.location, '\\.\\some\\element\\path')
+
+    def test_element_hist_returns_transactions(self):
+        client = mock.MagicMock()
+        client.hist.return_value = [accurev.transaction.Transaction(None, id='100', something='something')]
+        element = accurev.element.Element(client, eid='101010', depotName='something')
+        self.assertTrue(isinstance(element.hist.values()[0], accurev.transaction.Transaction))

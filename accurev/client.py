@@ -201,3 +201,28 @@ class Client:
         out, err = self.cmd('show -fexv refs')
         for reftree in accurev.stream.ReferenceTree.from_xml(out):
             yield reftree
+
+    def cpkhist(self, issues, depot):
+        assert isinstance(issues, list)
+
+        query = '<acRequest>\n'
+        query += '\t<cpkhist verbose="true">\n'
+        query += '\t\t<depot>{depot}</depot>\n'.format(depot=depot)
+        query += '\t\t<issues>'
+        for i in issues:
+            query += '\t\t\t<issue>\n'
+            query += '\t\t\t\t<issueNum>{issue}</issueNum>\n'.format(issue=i)
+            query += '\t\t\t</issue>\n'
+        query += '\t\t</issues>\n'
+        query += '\t</cpkhist>\n'
+        query += '</acRequest>'
+
+        out, err = self.xml_cmd(query)
+        for transaction in accurev.transaction.Transaction.from_cpkhist(self, out):
+            yield transaction
+
+    def hist(self, eid, depot):
+        cmd = 'hist -fexv -p {depot} -e {eid}'.format(depot=depot, eid=eid)
+        out, err = self.cmd('stat -fexv -d -s %s' % (self.name))
+        for transaction in accurev.transaction.Transaction(self, out):
+            yield transaction

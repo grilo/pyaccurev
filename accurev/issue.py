@@ -3,6 +3,7 @@
 
 import logging
 import xml.etree.cElementTree as et
+import collections
 
 import accurev.utils
 import accurev.base
@@ -13,7 +14,6 @@ class Issue(accurev.base.Base):
 
     @staticmethod
     def from_xml(client, out):
-        issues = []
         for i in et.fromstring(out).findall("./issues/issue"):
             props = {}
             for child in i:
@@ -23,10 +23,12 @@ class Issue(accurev.base.Base):
 
     def __init__(self, client, **kwargs):
         self._stream = None
+        self._depotName = None
         self._lookupField = None
-        super(Issue, self).__init__(client, **kwargs)
         self._elements = {}
         self._dependencies = {}
+        self._hist = collections.OrderedDict()
+        super(Issue, self).__init__(client, **kwargs)
 
     def __setattr__(self, name, value):
         """
@@ -37,7 +39,9 @@ class Issue(accurev.base.Base):
         """
         super(Issue, self).__setattr__(name, value)
 
-        if not 'client' in self.__dict__.keys() or not 'depotName' in self.__dict__.keys():
+        if not 'client' in self.__dict__.keys() or \
+                self.client is None or \
+                not '_depotName' in self.__dict__.keys():
             return
 
         schema = self.client.schema(self.depotName)
@@ -63,17 +67,23 @@ class Issue(accurev.base.Base):
 
     @property
     def lookupField(self):
-        attr = self.client.schema(self.depotName).lookupField
-        return getattr(self, attr)
+        if self.depotName is None:
+            return self.issueNum
+        else:
+            field = self.client.schema(self.depotName).lookupField
+            return getattr(self, field)
 
     @property
     def stream(self):
-        return accurev.stream.Stream.from_name(self.client, self.depotName, self._stream)
+        return self.client.stream_show(self.depotName, self._stream)
 
     @property
     def dependencies(self):
         if len(self._dependencies) == 0:
-            for issue in self.client.cpkdepend([self.issueNum], self.depotName, self.stream.name, self.stream.basis.name):
+            for issue in self.client.cpkdepend([self.issueNum], \
+                                                self.depotName, \
+                                                self.stream.name, \
+                                                self.stream.basis.name):
                 issue._depotName = self.depotName
                 self._dependencies[issue.lookupField] = issue
         return self._dependencies
@@ -82,16 +92,15 @@ class Issue(accurev.base.Base):
     def elements(self):
         if len(self._elements.keys()) == 0:
             for element in self.client.cpkdescribe([self.issueNum], self.depotName, self._stream):
-                if element.attrib['missing'] == 'true':
+                if element.missing == 'true':
                     continue
-                element.attrib['issue'] = self.issueNum
-                e = accurev.element.Element(self.client, **element.attrib)
-                self._elements[e.eid] = e
+                element.depotName = self.depotName
+                self._elements[element.eid] = element
         return self._elements
 
-    """
-    XXX Not implemented
     @property
-    def cpkhist(self):
-        pass
-    """
+    def hist(self):
+        if len(self._hist) == 0:
+            for transaction in self.client.cpkhist([self.issueNum], self.depotName):
+                self._hist[transaction.id] = transaction
+        return self._hist

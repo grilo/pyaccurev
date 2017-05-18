@@ -4,6 +4,7 @@
 import logging
 import re
 import xml.etree.cElementTree as et
+import collections
 
 import accurev.base
 
@@ -39,13 +40,18 @@ class Element(accurev.base.Base):
 
     def __init__(self, client, **kwargs):
         self._missing = None
+        self._hist = collections.OrderedDict()
         super(Element, self).__init__(client, **kwargs)
         for k, v in self.__dict__.items():
             if k == '_id':
                 k = '_eid'
             elif k == '_Real':
                 k = '_real_version'
+            elif k == '_real':
+                k = '_real_version'
             elif k == '_Virtual':
+                k = '_virtual_version'
+            elif k == '_virtual':
                 k = '_virtual_version'
             elif k == '_Loc' or k == '_location':
                 k = '_location'
@@ -53,5 +59,11 @@ class Element(accurev.base.Base):
                     continue
                 v = '\\'.join(v.split('/'))
                 v = '\\.' + v
-
             setattr(self, k, v)
+
+    @property
+    def hist(self):
+        if len(self._hist) == 0:
+            for transaction in self.client.hist(self.eid, self.depotName):
+                self._hist[transaction.id] = transaction
+        return self._hist

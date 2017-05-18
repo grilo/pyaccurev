@@ -52,12 +52,24 @@ class TestAccuRevStream(unittest.TestCase):
         stream = list(accurev.stream.Stream.from_xml(client, xml))[0]
         self.assertEqual(stream.basis, None)
 
-    def test_default_group_returns_elements(self):
+    def test_default_group_returns_member_only(self):
         xml = """<?xml version="1.0" encoding="utf-8"?>
             <AcResponse
                 Command="stat"
                 Directory="/jenkins/home/jenkins/pruebas/joaogn/pyacc"
                 TaskId="302012">
+              <element
+                  location="/./ITQA"
+                  dir="yes"
+                  executable="no"
+                  id="1111"
+                  elemType="dir"
+                  modTime="0"
+                  hierType="parallel"
+                  Virtual="2094/1"
+                  namedVersion="ING_PRO_ITQA/1"
+                  Real="32/1"
+                  status="(backed)"/>
               <element
                   location="/./ITQA"
                   dir="yes"
@@ -69,12 +81,13 @@ class TestAccuRevStream(unittest.TestCase):
                   Virtual="2094/1"
                   namedVersion="ING_PRO_ITQA/1"
                   Real="32/1"
-                  status="(backed)"/>
+                  status="(member)"/>
             </AcResponse>"""
 
         client = mock.MagicMock()
         client.stream_stat.return_value = accurev.element.Element.from_stat(None, xml)
-        stream = accurev.stream.Stream(client, name='helloworld')
+        stream = accurev.stream.Stream(client, name='helloworld', depotName='somedepot')
+        self.assertTrue(len(stream.default_group.keys()), 1)
         element = stream.default_group['138803']
         self.assertTrue(isinstance(element, accurev.element.Element))
 
@@ -100,7 +113,7 @@ class TestAccuRevStream(unittest.TestCase):
 
         client = mock.MagicMock()
         client.stream_stat.return_value = accurev.element.Element.from_stat(None, xml)
-        stream = accurev.stream.Stream(client, name='helloworld')
+        stream = accurev.stream.Stream(client, name='helloworld', depotName='somedepot')
         element = stream.elements['138803']
         self.assertTrue(isinstance(element, accurev.element.Element))
 
@@ -123,7 +136,7 @@ class TestAccuRevStream(unittest.TestCase):
 
         client = mock.MagicMock()
         client.stream_stat.return_value = accurev.element.Element.from_stat(None, xml)
-        stream = accurev.stream.Stream(client, name='helloworld')
+        stream = accurev.stream.Stream(client, name='helloworld', depotName='somedepot')
         element = stream.elements['138803']
         self.assertTrue(element.stream, 'helloworld')
 
@@ -139,26 +152,6 @@ class TestAccuRevStream(unittest.TestCase):
         stream = accurev.stream.Stream(client, name='helloworld', depotName='doesntmatter')
         self.assertEqual(len(stream.children), 1)
         self.assertEqual(stream.children.values()[0].name, 'some_child')
-
-    def test_stream_workspaces(self):
-        xml = """<?xml version="1.0" encoding="utf-8"?>
-            <streams>
-              <stream
-                type="snapshot"
-                name="stream1"/>
-              <stream
-                type="normal"
-                name="stream2"/>
-              <stream
-                type="workspace"
-                name="stream3"/>
-            </streams>"""
-
-        client = mock.MagicMock()
-        client.stream_children.return_value = accurev.stream.Stream.from_xml(None, xml)
-        stream = accurev.stream.Stream(client, name='helloworld', depotName='doesntmatter')
-        self.assertEqual(len(stream.workspaces), 1)
-        self.assertEqual(stream.workspaces.values()[0].name, 'stream3')
 
     def test_stream_workspaces(self):
 

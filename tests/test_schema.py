@@ -3,8 +3,6 @@
 
 import unittest
 
-import mock
-
 import accurev.schema
 
 

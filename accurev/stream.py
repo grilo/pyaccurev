@@ -33,7 +33,6 @@ class Stream(accurev.base.Base):
     def __init__(self, client, **kwargs):
         self._basis = None
         self._basis_stream = None
-        super(Stream, self).__init__(client, **kwargs)
         self._default_group = {}
         self._elements = {}
         self._issues = {}
@@ -41,6 +40,7 @@ class Stream(accurev.base.Base):
         self._refs = {}
         self._workspaces = {}
         self._family = []
+        super(Stream, self).__init__(client, **kwargs)
 
     @property
     def basis(self):
@@ -59,11 +59,11 @@ class Stream(accurev.base.Base):
             Return a map { eid : <element object> } of all elements in the
             default group (member) in this stream.
         """
-        if len(self._default_group) == 0:
-            for element in self.client.stream_stat(self.name, default_group=True):
-                element._stream = self.name
-                self._default_group[element.eid] = element
-        return self._default_group
+        default_group = {}
+        for element in self.elements.values():
+            if 'member' in element.status:
+                default_group[element.eid] = element
+        return default_group
 
     @property
     def elements(self):
@@ -72,8 +72,9 @@ class Stream(accurev.base.Base):
             in this stream.
         """
         if len(self._elements) == 0:
-            for element in self.client.stream_stat(self.name, default_group=True):
+            for element in self.client.stream_stat(self.name):
                 element._stream = self.name
+                element._depotName = self.depotName
                 self._elements[element.eid] = element
         return self._elements
 
