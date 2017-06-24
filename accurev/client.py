@@ -9,13 +9,12 @@ import xml.etree.cElementTree as et
 import accurev.utils
 import accurev.depot
 import accurev.schema
+import accurev.group
 
 
 class Client:
 
-    def __init__(self, username='biabjenkins', password='biabjenkins', server=None):
-        self.username = username
-        self.password = password
+    def __init__(self, server=None):
         self.server = server
         self.working_directory = None
         self._depots = {}
@@ -42,14 +41,6 @@ class Client:
         return self.tempfile_cmd('xml', query)
 
     @property
-    def depots(self):
-        depots = {}
-        out, err = self.cmd('show -fx depots')
-        for depot in accurev.depot.Depot.from_xml(self, out):
-            depots[depot.Name] = depot
-        return depots
-
-    @property
     def info(self):
         info = {}
         out, err = self.cmd('info')
@@ -63,12 +54,45 @@ class Client:
             info[key] = value
         return info
 
-    def login(self, permanent=False):
+    @property
+    def depots(self):
+        depots = {}
+        out, err = self.cmd('show -fx depots')
+        for depot in accurev.depot.Depot.from_xml(self, out):
+            depots[depot.Name] = depot
+        return depots
+
+    @property
+    def groups(self):
+        return accurev.group.Group.from_xml(self, self.group_show())
+
+    @property
+    def users(self):
+        return accurev.user.User.from_xml(self, self.user_show())
+
+    def login(self, username, password, permanent=False):
         cmd = 'login '
         if permanent:
             cmd += '-n '
-        cmd += '%s %s' % (self.username, self.password)
+        cmd += '%s %s' % (username, password)
         return self.cmd(cmd)
+
+    def group_show(self, principal=None):
+        cmd = 'show -fx groups'
+        if principal:
+            cmd = 'show -fx -u %s groups' % (principal)
+        out, err = self.cmd(cmd)
+        return out
+
+    def member_show(self, group): # pragma: no cover
+        cmd = 'show -fx -g %s members' % (group)
+        out, err = self.cmd(cmd)
+        return out
+
+    def user_show(self): # pragma: no cover
+        cmd = 'show -fx users'
+        out, err = self.cmd(cmd)
+        return out
 
     def modify_issue(self, properties, depot):
         query = """<modifyIssue issueDB="{depot}">\n""".format(depot=depot)
@@ -113,8 +137,7 @@ class Client:
             issues.append(i.attrib['number'])
 
         out, err = self.issue_query(depot, issues)
-        for issue in accurev.issue.Issue.from_xml(self, out):
-            yield issue
+        return accurev.issue.Issue.from_xml(self, out)
 
     def element_promote(self, element_list, source_stream, target_stream):
         query = '<elements>\n'
@@ -157,20 +180,17 @@ class Client:
             cmd += ' -s {stream}'.format(stream=stream)
         cmd += ' streams'
         out, err = self.cmd(cmd)
-        for stream in accurev.stream.Stream.from_xml(self, out):
-            yield stream
+        return accurev.stream.Stream.from_xml(self, out)
 
     def stream_children(self, depot, stream):
         cmd = 'show -p {depot} -fexvg -1 -s {stream} streams'.format(depot=depot, stream=stream)
         out, err = self.cmd(cmd)
-        for stream in accurev.stream.Stream.from_xml(self, out):
-            yield stream
+        return accurev.stream.Stream.from_xml(self, out)
 
     def stream_family(self, depot, stream):
         cmd = 'show -p {depot} -fexvg -r -s {stream} streams'.format(depot=depot, stream=stream)
         out, err = self.cmd(cmd)
-        for stream in accurev.stream.Stream.from_xml(self, out):
-            yield stream
+        return accurev.stream.Stream.from_xml(self, out)
 
     def stream_issues(self, depot, stream):
         """
@@ -194,13 +214,11 @@ class Client:
         else:
             cmd += ' -a'
         out, err = self.cmd('stat -fexv -d -s %s' % (stream.name))
-        for element in accurev.element.Element.from_stat(self, out):
-            yield element
+        return accurev.element.Element.from_stat(self, out)
 
     def refs_show(self):
         out, err = self.cmd('show -fexv refs')
-        for reftree in accurev.stream.ReferenceTree.from_xml(self, out):
-            yield reftree
+        return accurev.stream.ReferenceTree.from_xml(self, out)
 
     def cpkhist(self, issues, depot):
         assert isinstance(issues, list)
@@ -218,11 +236,9 @@ class Client:
         query += '</acRequest>'
 
         out, err = self.xml_cmd(query)
-        for transaction in accurev.transaction.Transaction.from_cpkhist(self, out):
-            yield transaction
+        return accurev.transaction.Transaction.from_cpkhist(self, out)
 
     def hist(self, eid, depot):
         cmd = 'hist -fexv -p {depot} -e {eid}'.format(depot=depot, eid=eid)
         out, err = self.cmd(cmd)
-        for transaction in accurev.transaction.Transaction.from_hist(self, out):
-            yield transaction
+        return accurev.transaction.Transaction.from_hist(self, out)

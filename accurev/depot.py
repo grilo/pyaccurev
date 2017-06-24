@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 import logging
-import xml.etree.ElementTree as xet
 import xml.etree.cElementTree as et
 
 import accurev.base
