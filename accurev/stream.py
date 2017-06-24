@@ -33,13 +33,6 @@ class Stream(accurev.base.Base):
     def __init__(self, client, **kwargs):
         self._basis = None
         self._basis_stream = None
-        self._default_group = {}
-        self._elements = {}
-        self._issues = {}
-        self._children = {}
-        self._refs = {}
-        self._workspaces = {}
-        self._family = []
         super(Stream, self).__init__(client, **kwargs)
 
     @property
@@ -71,12 +64,12 @@ class Stream(accurev.base.Base):
             Return a map { eid : <element object> } of all elements that exist
             in this stream.
         """
-        if len(self._elements) == 0:
-            for element in self.client.stream_stat(self.name):
-                element._stream = self.name
-                element._depotName = self.depotName
-                self._elements[element.eid] = element
-        return self._elements
+        elements = {}
+        for element in self.client.stream_stat(self.name):
+            element._stream = self.name
+            element._depotName = self.depotName
+            elements[element.eid] = element
+        return elements
 
     @property
     def children(self):
@@ -84,20 +77,20 @@ class Stream(accurev.base.Base):
             Return a map { name : <stream obj> } of all the immediate children
             without including reference trees.
         """
-        if len(self._children.keys()) == 0:
-            for stream in self.client.stream_children(self.depotName, self.name):
-                if stream.name == self.name:
-                    continue
-                self._children[stream.name] = stream
-        return self._children
+        children = {}
+        for stream in self.client.stream_children(self.depotName, self.name):
+            if stream.name == self.name:
+                continue
+            children[stream.name] = stream
+        return children
 
     @property
     def workspaces(self):
-        if len(self._workspaces.keys()) == 0:
-            for name, stream in self.children.items():
-                if stream.type == 'workspace':
-                    self._workspaces[name] = stream
-        return self._workspaces
+        workspaces = {}
+        for name, stream in self.children.items():
+            if stream.type == 'workspace':
+                workspaces[name] = stream
+        return workspaces
 
     @property
     def family(self):
@@ -106,19 +99,19 @@ class Stream(accurev.base.Base):
             representing this stream's ancestry and all of its children. Doesn't
             include reference trees, but includes itself.
         """
-        if len(self._family) == 0:
-            for stream in self.client.stream_family(self.depotName, self.name):
-                self._family.append(stream)
-        return self._family
+        family = []
+        for stream in self.client.stream_family(self.depotName, self.name):
+            family.append(stream)
+        return family
 
     @property
     def issues(self):
-        if len(self._issues.keys()) == 0:
-            for issue in self.client.stream_issues(self.depotName, self.name):
-                issue._stream = self.name
-                issue._depotName = self.depotName
-                self._issues[issue.lookupField] = issue
-        return self._issues
+        issues = {}
+        for issue in self.client.stream_issues(self.depotName, self.name):
+            issue._stream = self.name
+            issue._depotName = self.depotName
+            issues[issue.lookupField] = issue
+        return issues
 
     @property
     def refs(self):
@@ -126,9 +119,9 @@ class Stream(accurev.base.Base):
             Return a map { name : <stream obj> } of all the reference trees
             associated with this stream.
         """
-        if len(self._refs.keys()) == 0:
-            for ref in self.client.refs_show():
-                if ref.Stream != self.streamNumber:
-                    continue
-                self._refs[ref.Name] = ref
-        return self._refs
+        refs = {}
+        for ref in self.client.refs_show():
+            if ref.Stream != self.streamNumber:
+                continue
+            refs[ref.Name] = ref
+        return refs

@@ -40,7 +40,6 @@ class Element(accurev.base.Base):
 
     def __init__(self, client, **kwargs):
         self._missing = None
-        self._hist = collections.OrderedDict()
         super(Element, self).__init__(client, **kwargs)
         for k, v in self.__dict__.items():
             if k == '_id':
@@ -63,7 +62,7 @@ class Element(accurev.base.Base):
 
     @property
     def hist(self):
-        if len(self._hist) == 0:
-            for transaction in self.client.hist(self.eid, self.depotName):
-                self._hist[transaction.id] = transaction
-        return self._hist
+        hist = collections.OrderedDict()
+        for transaction in self.client.hist(self.eid, self.depotName):
+            hist[transaction.id] = transaction
+        return hist

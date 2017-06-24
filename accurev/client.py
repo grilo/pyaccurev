@@ -43,25 +43,25 @@ class Client:
 
     @property
     def depots(self):
-        if len(self._depots.keys()) == 0:
-            out, err = self.cmd('show -fx depots')
-            for depot in accurev.depot.Depot.from_xml(self, out):
-                self._depots[depot.Name] = depot
-        return self._depots
+        depots = {}
+        out, err = self.cmd('show -fx depots')
+        for depot in accurev.depot.Depot.from_xml(self, out):
+            depots[depot.Name] = depot
+        return depots
 
     @property
     def info(self):
-        if len(self._info.keys()) == 0:
-            out, err = self.cmd('info')
-            for line in out.splitlines():
-                key, value = line.split(':', 1)
-                key = key.lower().replace(' ', '_')
-                value = value.strip()
-                if value == '(none)':
-                    value = None
-                setattr(self, key, value)
-                self._info[key] = value
-        return self._info
+        info = {}
+        out, err = self.cmd('info')
+        for line in out.splitlines():
+            key, value = line.split(':', 1)
+            key = key.lower().replace(' ', '_')
+            value = value.strip()
+            if value == '(none)':
+                value = None
+            setattr(self, key, value)
+            info[key] = value
+        return info
 
     def login(self, permanent=False):
         cmd = 'login '
@@ -95,7 +95,7 @@ class Client:
         query += '</AcRequest>'
 
         out, err = self.xml_cmd(query)
-        return accurev.element.Element.from_cpkdescribe(out)
+        return accurev.element.Element.from_cpkdescribe(self, out)
 
     def getconfig(self, config_name, depot):
         cmd = 'getconfig -p {depot} -r {config_name}'.format(depot=depot, config_name=config_name)
@@ -193,13 +193,13 @@ class Client:
             cmd += ' -d'
         else:
             cmd += ' -a'
-        out, err = self.cmd('stat -fexv -d -s %s' % (self.name))
+        out, err = self.cmd('stat -fexv -d -s %s' % (stream.name))
         for element in accurev.element.Element.from_stat(self, out):
             yield element
 
     def refs_show(self):
         out, err = self.cmd('show -fexv refs')
-        for reftree in accurev.stream.ReferenceTree.from_xml(out):
+        for reftree in accurev.stream.ReferenceTree.from_xml(self, out):
             yield reftree
 
     def cpkhist(self, issues, depot):
@@ -223,6 +223,6 @@ class Client:
 
     def hist(self, eid, depot):
         cmd = 'hist -fexv -p {depot} -e {eid}'.format(depot=depot, eid=eid)
-        out, err = self.cmd('stat -fexv -d -s %s' % (self.name))
-        for transaction in accurev.transaction.Transaction(self, out):
+        out, err = self.cmd(cmd)
+        for transaction in accurev.transaction.Transaction.from_hist(self, out):
             yield transaction

@@ -12,9 +12,6 @@ class Base(object):
             setattr(self, '_' + name, value)
         self.client = client
 
-    def __getattr__(self, attr):
-        return self.__getattribute__(attr)
-
     def __getattr__(self, name):
         if '_' + name in self.__dict__.keys():
             return self.__dict__['_' + name]

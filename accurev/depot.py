@@ -21,20 +21,16 @@ class Depot(accurev.base.Base):
     def __init__(self, client, **kwargs):
         super(Depot, self).__init__(client, **kwargs)
         self._issues = {}
-        self._streams = {}
-        self._schema = None
         for k, v in self.__dict__.items():
             self.__dict__[k.lower()] = v
 
     @property
     def schema(self):
-        if self._schema is None:
-            self._schema = self.client.schema(self._Name)
-        return self._schema
+        return self.client.schema(self._Name)
 
     @property
     def streams(self):
-        if len(self._streams.keys()) == 0:
-            for stream in self.client.stream_show(self._Name):
-                self._streams[stream.name] = stream
-        return self._streams
+        streams = {}
+        for stream in self.client.stream_show(self._Name):
+            streams[stream.name] = stream
+        return streams

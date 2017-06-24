@@ -26,7 +26,6 @@ class Issue(accurev.base.Base):
         self._depotName = None
         self._lookupField = None
         self._elements = {}
-        self._dependencies = {}
         self._hist = collections.OrderedDict()
         super(Issue, self).__init__(client, **kwargs)
 
@@ -79,28 +78,28 @@ class Issue(accurev.base.Base):
 
     @property
     def dependencies(self):
-        if len(self._dependencies) == 0:
-            for issue in self.client.cpkdepend([self.issueNum], \
-                                                self.depotName, \
-                                                self.stream.name, \
-                                                self.stream.basis.name):
-                issue._depotName = self.depotName
-                self._dependencies[issue.lookupField] = issue
-        return self._dependencies
+        dependencies = {}
+        for issue in self.client.cpkdepend([self.issueNum], \
+                                            self.depotName, \
+                                            self.stream.name, \
+                                            self.stream.basis.name):
+            issue._depotName = self.depotName
+            dependencies[issue.lookupField] = issue
+        return dependencies
 
     @property
     def elements(self):
-        if len(self._elements.keys()) == 0:
-            for element in self.client.cpkdescribe([self.issueNum], self.depotName, self._stream):
-                if element.missing == 'true':
-                    continue
-                element.depotName = self.depotName
-                self._elements[element.eid] = element
-        return self._elements
+        elements = {}
+        for element in self.client.cpkdescribe([self.issueNum], self.depotName, self._stream):
+            if element.missing == 'true':
+                continue
+            element.depotName = self.depotName
+            elements[element.eid] = element
+        return elements
 
     @property
     def hist(self):
-        if len(self._hist) == 0:
-            for transaction in self.client.cpkhist([self.issueNum], self.depotName):
-                self._hist[transaction.id] = transaction
-        return self._hist
+        hist = collections.OrderedDict()
+        for transaction in self.client.cpkhist([self.issueNum], self.depotName):
+            hist[transaction.id] = transaction
+        return hist

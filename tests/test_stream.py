@@ -6,6 +6,7 @@ import unittest
 import mock
 
 import accurev.stream
+import accurev.schema
 
 
 class TestAccuRevStream(unittest.TestCase):
@@ -87,9 +88,9 @@ class TestAccuRevStream(unittest.TestCase):
         client = mock.MagicMock()
         client.stream_stat.return_value = accurev.element.Element.from_stat(None, xml)
         stream = accurev.stream.Stream(client, name='helloworld', depotName='somedepot')
-        self.assertTrue(len(stream.default_group.keys()), 1)
-        element = stream.default_group['138803']
-        self.assertTrue(isinstance(element, accurev.element.Element))
+        default_group = stream.default_group
+        self.assertTrue(len(default_group.keys()), 1)
+        self.assertTrue(isinstance(default_group['138803'], accurev.element.Element))
 
     def test_elements_returns_elements(self):
         xml = """<?xml version="1.0" encoding="utf-8"?>
@@ -150,8 +151,9 @@ class TestAccuRevStream(unittest.TestCase):
         client = mock.MagicMock()
         client.stream_children.return_value = accurev.stream.Stream.from_xml(None, xml)
         stream = accurev.stream.Stream(client, name='helloworld', depotName='doesntmatter')
-        self.assertEqual(len(stream.children), 1)
-        self.assertEqual(stream.children.values()[0].name, 'some_child')
+        children = stream.children
+        self.assertEqual(len(children), 1)
+        self.assertEqual(children.values()[0].name, 'some_child')
 
     def test_stream_workspaces(self):
 
@@ -171,8 +173,9 @@ class TestAccuRevStream(unittest.TestCase):
         client = mock.MagicMock()
         client.stream_children.return_value = accurev.stream.Stream.from_xml(None, xml)
         stream = accurev.stream.Stream(client, name='helloworld', depotName='doesntmatter')
-        self.assertEqual(len(stream.workspaces), 1)
-        self.assertEqual(stream.workspaces.values()[0].name, 'stream3')
+        workspaces = stream.workspaces
+        self.assertEqual(len(workspaces), 1)
+        self.assertEqual(workspaces.values()[0].name, 'stream3')
 
     def test_stream_family(self):
 
@@ -223,8 +226,8 @@ class TestAccuRevStream(unittest.TestCase):
             </template>"""
 
         client = mock.MagicMock()
-        client.schema.return_value = accurev.schema.Schema.from_xml(None, schema)
         client.stream_issues.return_value = accurev.issue.Issue.from_xml(client, xml)
+        client.schema.return_value = accurev.schema.Schema.from_xml(None, schema)
         stream = accurev.stream.Stream(client, name='helloworld', depotName='doesntmatter')
         self.assertEqual(len(stream.issues), 2)
         for issue in stream.issues.values():
