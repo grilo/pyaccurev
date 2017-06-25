@@ -26,8 +26,10 @@ class TestAccuRevElement(unittest.TestCase):
 		  modTime="0"
 		  hierType="parallel"
 		  Virtual="2094/1"
+		  virtual="2094/1"
 		  namedVersion="ING_PRO_ITQA/1"
 		  Real="32/1"
+		  real="32/1"
 		  status="(backed)"/>
 	    </AcResponse>"""
 

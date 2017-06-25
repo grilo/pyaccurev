@@ -9,7 +9,7 @@ import shlex
 
 
 class Memoize(object):
-    def __init__(self, function):
+    def __init__(self, function): # pragma: no cover
         self.function = function
         self.memo = {}
     def __call__(self, *args, **kwds):
@@ -21,7 +21,7 @@ class Memoize(object):
         return self.memo[string]
 
 @Memoize
-def cmd(command, directory=None):
+def cmd(command, directory=None): # pragma: no cover
     logging.debug(command)
     old_dir = os.getcwd()
     if directory:

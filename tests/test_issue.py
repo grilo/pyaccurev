@@ -6,7 +6,9 @@ import unittest
 import mock
 
 import accurev.issue
-#import accurev.stream
+import accurev.stream
+import accurev.transaction
+import accurev.schema
 
 
 class TestAccuRevIssue(unittest.TestCase):

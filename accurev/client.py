@@ -20,10 +20,10 @@ class Client:
         self._depots = {}
         self._info = {}
 
-    def __repr__(self):
+    def __repr__(self): # pragma: no cover
         return self.info
 
-    def chdir(self, directory):
+    def chdir(self, directory): # pragma: no cover
         self.working_directory = directory
 
     def cmd(self, cmd):
@@ -63,7 +63,7 @@ class Client:
         return depots
 
     @property
-    def groups(self):
+    def groups(self): # pragma: no cover
         return accurev.group.Group.from_xml(self, self.group_show())
 
     @property
@@ -111,7 +111,7 @@ class Client:
         query += '\t\t<depot>{depot}</depot>\n'.format(depot=depot)
         if stream:
             query += '\t\t<stream1>{stream}</stream1>\n'.format(stream=stream)
-        query += '\t\t<issues>'
+        query += '\t\t<issues>\n'
         for i in issues:
             query += '\t\t\t<issueNum>{issue}</issueNum>\n'.format(issue=i)
         query += '\t\t</issues>\n'
@@ -213,7 +213,7 @@ class Client:
             cmd += ' -d'
         else:
             cmd += ' -a'
-        out, err = self.cmd('stat -fexv -d -s %s' % (stream.name))
+        out, err = self.cmd(cmd)
         return accurev.element.Element.from_stat(self, out)
 
     def refs_show(self):
@@ -226,7 +226,7 @@ class Client:
         query = '<acRequest>\n'
         query += '\t<cpkhist verbose="true">\n'
         query += '\t\t<depot>{depot}</depot>\n'.format(depot=depot)
-        query += '\t\t<issues>'
+        query += '\t\t<issues>\n'
         for i in issues:
             query += '\t\t\t<issue>\n'
             query += '\t\t\t\t<issueNum>{issue}</issueNum>\n'.format(issue=i)
