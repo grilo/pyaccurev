@@ -1,6 +1,9 @@
 # pyaccurev
 Python wrapper for the AccuRev CLI (tested against 5.6)
 
+[![Coverage Status](https://coveralls.io/repos/github/grilo/pyaccurev/badge.svg)](https://coveralls.io/github/grilo/pyaccurev)
+[![Build](https://travis-ci.org/grilo/pyaccurev.svg?branch=master)
+
 # Usage
 ```python
 import accurev.client
